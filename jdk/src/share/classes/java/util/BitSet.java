@@ -68,11 +68,14 @@ public class BitSet implements Cloneable, java.io.Serializable {
      * a long, which consists of 64 bits, requiring 6 address bits.
      * The choice of word size is determined purely by performance concerns.
      */
+    // 用于计算数组的大小， long 为 64位， 要存128的bit，需要2个数组，即 128 >> ADDRESS_BITS_PER_WORD = 2
     private final static int ADDRESS_BITS_PER_WORD = 6;
+    // 每一个word的数量
     private final static int BITS_PER_WORD = 1 << ADDRESS_BITS_PER_WORD;
     private final static int BIT_INDEX_MASK = BITS_PER_WORD - 1;
 
     /* Used to shift left or right for a partial word mask */
+    // 掩码，是用于位移时进行运算的，这个值就是-1
     private static final long WORD_MASK = 0xffffffffffffffffL;
 
     /**
@@ -99,6 +102,7 @@ public class BitSet implements Cloneable, java.io.Serializable {
     /**
      * Whether the size of "words" is user-specified.  If so, we assume
      * the user knows what he's doing and try harder to preserve it.
+     * 数组的大小是否由用户指定的(注释里写明了:如果是true,我们假设用户知道他自己在干什么)
      */
     private transient boolean sizeIsSticky = false;
 
@@ -176,6 +180,8 @@ public class BitSet implements Cloneable, java.io.Serializable {
         checkInvariants();
     }
 
+    // ---------工厂方法,返回BitSet实例 -------
+
     /**
      * Returns a new bit set containing all the bits in the given long array.
      *
@@ -194,6 +200,7 @@ public class BitSet implements Cloneable, java.io.Serializable {
      */
     public static BitSet valueOf(long[] longs) {
         int n;
+        // 将数组中为0的去掉
         for (n = longs.length; n > 0 && longs[n - 1] == 0; n--)
             ;
         return new BitSet(Arrays.copyOf(longs, n));
@@ -297,7 +304,9 @@ public class BitSet implements Cloneable, java.io.Serializable {
         int n = wordsInUse;
         if (n == 0)
             return new byte[0];
+        // 前面的认为已满
         int len = 8 * (n-1);
+        // 最后一个用一个字节算一个字节
         for (long x = words[n - 1]; x != 0; x >>>= 8)
             len++;
         byte[] bytes = new byte[len];
@@ -374,6 +383,7 @@ public class BitSet implements Cloneable, java.io.Serializable {
      * @param  bitIndex the index of the bit to flip
      * @throws IndexOutOfBoundsException if the specified index is negative
      * @since  1.4
+     * 反转操作
      */
     public void flip(int bitIndex) {
         if (bitIndex < 0)
@@ -487,18 +497,20 @@ public class BitSet implements Cloneable, java.io.Serializable {
         int startWordIndex = wordIndex(fromIndex);
         int endWordIndex   = wordIndex(toIndex - 1);
         expandTo(endWordIndex);
-
+        // 计算掩码
         long firstWordMask = WORD_MASK << fromIndex;
         long lastWordMask  = WORD_MASK >>> -toIndex;
         if (startWordIndex == endWordIndex) {
             // Case 1: One word
+            // 先对firstWordMask和lastWordMask进行与运算，再进行位或运算(补码运算)
             words[startWordIndex] |= (firstWordMask & lastWordMask);
         } else {
-            // Case 2: Multiple words
+            // Case 2: Multiple words    第一个和最后一个单独处理，中间的全为1
             // Handle first word
             words[startWordIndex] |= firstWordMask;
 
             // Handle intermediate words, if any
+            // 中间的全为1
             for (int i = startWordIndex+1; i < endWordIndex; i++)
                 words[i] = WORD_MASK;
 
@@ -572,6 +584,7 @@ public class BitSet implements Cloneable, java.io.Serializable {
 
         int endWordIndex = wordIndex(toIndex - 1);
         if (endWordIndex >= wordsInUse) {
+            // 只能到最后一个bit为1的位置
             toIndex = length();
             endWordIndex = wordsInUse - 1;
         }
@@ -657,11 +670,15 @@ public class BitSet implements Cloneable, java.io.Serializable {
             toIndex = len;
 
         BitSet result = new BitSet(toIndex - fromIndex);
+        // words数组的大小
         int targetWords = wordIndex(toIndex - fromIndex - 1) + 1;
         int sourceIndex = wordIndex(fromIndex);
+        // 对从0开始取的一个优化
         boolean wordAligned = ((fromIndex & BIT_INDEX_MASK) == 0);
 
         // Process all words but the last word
+        // 如果从0，则那整一段， 如果非0，取第一个区间的高(len-fromIndex) + 第二个区间的低(fromIndex)
+        // 如下， >>> 获取了高位， << 获取了低位  ｜ 后将该低位放在了>>>后的高位处
         for (int i = 0; i < targetWords - 1; i++, sourceIndex++)
             result.words[i] = wordAligned ? words[sourceIndex] :
                 (words[sourceIndex] >>> fromIndex) |
@@ -670,12 +687,12 @@ public class BitSet implements Cloneable, java.io.Serializable {
         // Process the last word
         long lastWordMask = WORD_MASK >>> -toIndex;
         result.words[targetWords - 1] =
-            ((toIndex-1) & BIT_INDEX_MASK) < (fromIndex & BIT_INDEX_MASK)
+            ((toIndex-1) & BIT_INDEX_MASK) < (fromIndex & BIT_INDEX_MASK)  // todo ??  最终这里要填补的是 (toIndex-fromIndex)%64 的数量，
             ? /* straddles source words */
             ((words[sourceIndex] >>> fromIndex) |
-             (words[sourceIndex+1] & lastWordMask) << -fromIndex)
+             (words[sourceIndex+1] & lastWordMask) << -fromIndex) // 不够用，还得从下一个words上取
             :
-            ((words[sourceIndex] & lastWordMask) >>> fromIndex);
+            ((words[sourceIndex] & lastWordMask) >>> fromIndex);  // 就是余数的大小在最后一个words上，即便减去fromIndex拿的数量以外，仍然够用
 
         // Set wordsInUse correctly
         result.wordsInUse = targetWords;
@@ -706,6 +723,7 @@ public class BitSet implements Cloneable, java.io.Serializable {
      *         is no such bit
      * @throws IndexOutOfBoundsException if the specified index is negative
      * @since  1.4
+     * 获取指定索引处或之后第一个值为1的值
      */
     public int nextSetBit(int fromIndex) {
         if (fromIndex < 0)

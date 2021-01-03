@@ -1390,7 +1390,7 @@ public final class Integer extends Number implements Comparable<Integer> {
      *     ("leftmost") one-bit in the two's complement binary representation
      *     of the specified {@code int} value, or 32 if the value
      *     is equal to zero.
-     * @since 1.5
+     * @since 1.5   用于返回有多少个0， 采用二分查找
      */
     public static int numberOfLeadingZeros(int i) {
         // HD, Figure 5-6

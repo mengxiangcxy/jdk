@@ -82,10 +82,10 @@ class KQueueSelectorImpl
     KQueueSelectorImpl(SelectorProvider sp) {
         super(sp);
         long fds = IOUtil.makePipe(false);
-        fd0 = (int)(fds >>> 32);
-        fd1 = (int)fds;
+        fd0 = (int)(fds >>> 32);// 写fd
+        fd1 = (int)fds;// 读fd
         try {
-            kqueueWrapper = new KQueueArrayWrapper();
+            kqueueWrapper = new KQueueArrayWrapper(); // 分配就绪时间的内存空间 并初始化kq
             kqueueWrapper.initInterrupt(fd0, fd1);
             fdMap = new HashMap<>();
             totalChannels = 1;
@@ -111,15 +111,15 @@ class KQueueSelectorImpl
         int entries = 0;
         if (closed)
             throw new ClosedSelectorException();
-        processDeregisterQueue();
+        processDeregisterQueue();// 处理删除键
         try {
             begin();
-            entries = kqueueWrapper.poll(timeout);
+            entries = kqueueWrapper.poll(timeout);// 注册事件并等待就绪事件
         } finally {
             end();
         }
-        processDeregisterQueue();
-        return updateSelectedKeys(entries);
+        processDeregisterQueue();// 处理删除键
+        return updateSelectedKeys(entries);// 记录就绪事件
     }
 
     /**
@@ -154,12 +154,13 @@ class KQueueSelectorImpl
                     if (selectedKeys.contains(ski)) {
                         // first time this file descriptor has been encountered on this
                         // update?
-                        if (me.updateCount != updateCount) {
+                        if (me.updateCount != updateCount) { // 一个通道可以注册多个感兴趣的事件，当该次选择时，有多个新事件就绪，则第一个替换后续更新，// updateCount相当于每次选择的版本号
                             if (ski.channel.translateAndSetReadyOps(rOps, ski)) {
                                 numKeysUpdated++;
                                 me.updateCount = updateCount;
                             }
                         } else {
+
                             // ready ops have already been set on this update
                             ski.channel.translateAndUpdateReadyOps(rOps, ski);
                         }

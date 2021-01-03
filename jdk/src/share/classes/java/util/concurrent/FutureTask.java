@@ -90,21 +90,23 @@ public class FutureTask<V> implements RunnableFuture<V> {
      * NEW -> INTERRUPTING -> INTERRUPTED
      */
     private volatile int state;
-    private static final int NEW          = 0;
-    private static final int COMPLETING   = 1;
-    private static final int NORMAL       = 2;
-    private static final int EXCEPTIONAL  = 3;
-    private static final int CANCELLED    = 4;
-    private static final int INTERRUPTING = 5;
-    private static final int INTERRUPTED  = 6;
+    private static final int NEW          = 0; // 初始化状态
+    private static final int COMPLETING   = 1; // 完成中状态
+    private static final int NORMAL       = 2; // 正常情况下的完成状态
+    private static final int EXCEPTIONAL  = 3; // 异常情况下的完成状态
+    private static final int CANCELLED    = 4; // 取消状态
+    private static final int INTERRUPTING = 5; // 中断中状态
+    private static final int INTERRUPTED  = 6; // 已中断状态
 
     /** The underlying callable; nulled out after running */
     private Callable<V> callable;
     /** The result to return or exception to throw from get() */
+    // 输出结果，如果是正常执行完成，get()方法会返回此结果，如果是异常执行完成，get()方法会抛出outcome包装为ExecutionException的异常
     private Object outcome; // non-volatile, protected by state reads/writes
     /** The thread running the callable; CASed during run() */
     private volatile Thread runner;
     /** Treiber stack of waiting threads */
+    // 等待线程集合，Treiber Stack实现
     private volatile WaitNode waiters;
 
     /**
@@ -281,6 +283,7 @@ public class FutureTask<V> implements RunnableFuture<V> {
             // leaked interrupts
             int s = state;
             if (s >= INTERRUPTING)
+                // 处理run()方法执行期间调用了cancel(true)方法的情况
                 handlePossibleCancellationInterrupt(s);
         }
     }
@@ -294,6 +297,8 @@ public class FutureTask<V> implements RunnableFuture<V> {
      *
      * @return {@code true} if successfully run and reset
      */
+    // 执行任务并且重置状态   ScheduledThreadPoolExecutor使用
+    // 由于没有执行set()方法设置执行结果，这个方法除了执行过程中抛出异常或者主动取消会到导致state由NEW更变为其他值，正常执行完毕一个任务之后，state是保持为NEW不变
     protected boolean runAndReset() {
         if (state != NEW ||
             !UNSAFE.compareAndSwapObject(this, runnerOffset,
@@ -331,6 +336,9 @@ public class FutureTask<V> implements RunnableFuture<V> {
     private void handlePossibleCancellationInterrupt(int s) {
         // It is possible for our interrupter to stall before getting a
         // chance to interrupt us.  Let's spin-wait patiently.
+        // 处理run()方法执行期间调用了cancel(true)方法的情况
+        // 这里还没分析cancel()方法，但是可以提前告知：它会先把状态更新为INTERRUPTING，再进行线程中断，最后更新状态为INTERRUPTED
+        // 所以如果发现当前状态为INTERRUPTING，当前线程需要让出CPU控制权等待到状态更变为INTERRUPTED即可，这个时间应该十分短暂
         if (s == INTERRUPTING)
             while (state == INTERRUPTING)
                 Thread.yield(); // wait out pending interrupt
@@ -365,6 +373,7 @@ public class FutureTask<V> implements RunnableFuture<V> {
         // assert state > COMPLETING;
         for (WaitNode q; (q = waiters) != null;) {
             if (UNSAFE.compareAndSwapObject(this, waitersOffset, q, null)) {
+                // 遍历，唤醒所有等待的线程
                 for (;;) {
                     Thread t = q.thread;
                     if (t != null) {
@@ -397,7 +406,7 @@ public class FutureTask<V> implements RunnableFuture<V> {
         throws InterruptedException {
         final long deadline = timed ? System.nanoTime() + nanos : 0L;
         WaitNode q = null;
-        boolean queued = false;
+        boolean queued = false; // 是否已入队
         for (;;) {
             if (Thread.interrupted()) {
                 removeWaiter(q);
@@ -443,6 +452,7 @@ public class FutureTask<V> implements RunnableFuture<V> {
     private void removeWaiter(WaitNode node) {
         if (node != null) {
             node.thread = null;
+            // 将thread为空的节点都移除，如果在过程中出现并发现象，则从新开始
             retry:
             for (;;) {          // restart on removeWaiter race
                 for (WaitNode pred = null, q = waiters, s; q != null; q = s) {

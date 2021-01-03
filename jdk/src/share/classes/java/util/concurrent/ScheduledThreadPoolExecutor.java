@@ -151,11 +151,13 @@ public class ScheduledThreadPoolExecutor
 
     /**
      * False if should cancel/suppress periodic tasks on shutdown.
+     * 线程池关闭时是否需要继续执行周期性任务
      */
     private volatile boolean continueExistingPeriodicTasksAfterShutdown;
 
     /**
      * False if should cancel non-periodic tasks on shutdown.
+     * 线程池关闭时是否需要执行已经存在的延时任务
      */
     private volatile boolean executeExistingDelayedTasksAfterShutdown = true;
 
@@ -177,13 +179,16 @@ public class ScheduledThreadPoolExecutor
         return System.nanoTime();
     }
 
+    // 负责ScheduledThreadPoolExecutor中任务的调度
     private class ScheduledFutureTask<V>
             extends FutureTask<V> implements RunnableScheduledFuture<V> {
 
         /** Sequence number to break ties FIFO */
+        // 任务被添加到ScheduledThreadPoolExecutor中的序号
         private final long sequenceNumber;
 
         /** The time the task is enabled to execute in nanoTime units */
+        // 任务要执行的具体时间
         private long time;
 
         /**
@@ -191,6 +196,7 @@ public class ScheduledThreadPoolExecutor
          * value indicates fixed-rate execution.  A negative value
          * indicates fixed-delay execution.  A value of 0 indicates a
          * non-repeating task.
+         * 任务的间隔周期
          */
         private final long period;
 
@@ -199,6 +205,7 @@ public class ScheduledThreadPoolExecutor
 
         /**
          * Index into delay queue, to support faster cancellation.
+         * 队列中的索引，支持快速取消
          */
         int heapIndex;
 
@@ -236,6 +243,12 @@ public class ScheduledThreadPoolExecutor
             return unit.convert(time - now(), NANOSECONDS);
         }
 
+        /**
+         * 用于队列的排序
+         * 1。 time小排前
+         * 2。 sequenceNumber小排前
+         * 3。 如果不是ScheduledFutureTask， 则根据延迟时间排序
+         */
         public int compareTo(Delayed other) {
             if (other == this) // compare zero if same object
                 return 0;
@@ -347,6 +360,7 @@ public class ScheduledThreadPoolExecutor
             if (!canRunInCurrentRunState(true) && remove(task))
                 task.cancel(false);
             else
+                // 确保线程池有有线程
                 ensurePrestart();
         }
     }
@@ -507,6 +521,8 @@ public class ScheduledThreadPoolExecutor
      * This may occur if a task is eligible to be dequeued, but has
      * not yet been, while some other task is added with a delay of
      * Long.MAX_VALUE.
+     *
+     * 限制队列中所有节点的延迟时间在Long.MAX_VALUE之内，防止在compareTo方法中溢出。
      */
     private long overflowFree(long delay) {
         Delayed head = (Delayed) super.getQueue().peek();
@@ -591,7 +607,7 @@ public class ScheduledThreadPoolExecutor
             new ScheduledFutureTask<Void>(command,
                                           null,
                                           triggerTime(initialDelay, unit),
-                                          unit.toNanos(-delay));
+                                          unit.toNanos(-delay)); // -delay, 在重置时间时，会用当前时间+delay，这样就实现了固定时间的延迟
         RunnableScheduledFuture<Void> t = decorateTask(command, sft);
         sft.outerTask = t;
         delayedExecute(t);
@@ -805,6 +821,8 @@ public class ScheduledThreadPoolExecutor
      * Specialized delay queue. To mesh with TPE declarations, this
      * class must be declared as a BlockingQueue<Runnable> even though
      * it can only hold RunnableScheduledFutures.
+     *
+     * 数据结构： 二叉堆(小堆)
      */
     static class DelayedWorkQueue extends AbstractQueue<Runnable>
         implements BlockingQueue<Runnable> {
@@ -853,12 +871,16 @@ public class ScheduledThreadPoolExecutor
          * thread, but not necessarily the current leader, is
          * signalled.  So waiting threads must be prepared to acquire
          * and lose leadership while waiting.
+         *
+         * 特指队列头任务所在线程
          */
         private Thread leader = null;
 
         /**
          * Condition signalled when a newer task becomes available at the
          * head of the queue or a new thread may need to become leader.
+         *
+         * 当队列头的任务延时时间到了，或者有新的任务变成队列头时，用来唤醒等待线程
          */
         private final Condition available = lock.newCondition();
 
@@ -1020,6 +1042,8 @@ public class ScheduledThreadPoolExecutor
                     siftUp(i, e);
                 }
                 if (queue[0] == e) {
+                    // 表示新插入的元素是队列头，更换了队列头，
+                    // 那么就要唤醒正在等待获取任务的线程。
                     leader = null;
                     available.signal();
                 }
@@ -1087,6 +1111,7 @@ public class ScheduledThreadPoolExecutor
                         if (leader != null)
                             available.await();
                         else {
+                            // leader线程的目的，是因为头只有一个，让一个线程定时等待即可，这样可以避免其他线程的这种不必要等待
                             Thread thisThread = Thread.currentThread();
                             leader = thisThread;
                             try {

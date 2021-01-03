@@ -1456,7 +1456,7 @@ public abstract class AbstractQueuedSynchronizer
      * shared mode (that is, this method is invoked from {@link
      * #tryAcquireShared}) then it is guaranteed that the current thread
      * is not the first queued thread.  Used only as a heuristic in
-     * ReentrantReadWriteLock.
+     * ReentrantReadWriteLock.  等待队列存在，首节点共享即读，则不阻塞读，若独占则阻塞
      */
     final boolean apparentlyFirstQueuedIsExclusive() {
         Node h, s;
@@ -1507,7 +1507,10 @@ public abstract class AbstractQueuedSynchronizer
      * @return {@code true} if there is a queued thread preceding the
      *         current thread, and {@code false} if the current thread
      *         is at the head of the queue or the queue is empty
-     * @since 1.7
+     * @since 1.7  判断当前线程是否能去获取锁， 因为有FIFO队列的等待顺序
+     *
+     * h!=t 当前队列有等待的
+     * h.next == null  刚好最后一个等待的拿到了锁，但是对于当前线程来说，还要继续阻塞
      */
     public final boolean hasQueuedPredecessors() {
         // The correctness of this depends on head being initialized
@@ -1665,7 +1668,7 @@ public abstract class AbstractQueuedSynchronizer
      * Returns true if successful.
      * @param node the node
      * @return true if successfully transferred (else the node was
-     * cancelled before signal)
+     * cancelled before signal) 加入同步队列
      */
     final boolean transferForSignal(Node node) {
         /*

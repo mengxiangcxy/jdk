@@ -53,6 +53,7 @@ public interface RunnableScheduledFuture<V> extends RunnableFuture<V>, Scheduled
      * run only once.
      *
      * @return {@code true} if this task is periodic
+     * 是否为定期任务
      */
     boolean isPeriodic();
 }

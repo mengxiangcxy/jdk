@@ -147,6 +147,7 @@ public abstract class AbstractExecutorService implements ExecutorService {
         if (ntasks == 0)
             throw new IllegalArgumentException();
         ArrayList<Future<T>> futures = new ArrayList<Future<T>>(ntasks);
+        // 可记录已完成的任务
         ExecutorCompletionService<T> ecs =
             new ExecutorCompletionService<T>(this);
 
@@ -177,14 +178,17 @@ public abstract class AbstractExecutorService implements ExecutorService {
                         ++active;
                     }
                     else if (active == 0)
+                        // 如果获取所有已完成任务结果异常，这里会退出循环
                         break;
                     else if (timed) {
+                        // 允许超时的模式下用超时阻塞获取Future实例
                         f = ecs.poll(nanos, TimeUnit.NANOSECONDS);
                         if (f == null)
                             throw new TimeoutException();
                         nanos = deadline - System.nanoTime();
                     }
                     else
+                        // 非超时的模式下永久阻塞获取Future实例
                         f = ecs.take();
                 }
                 if (f != null) {
@@ -284,6 +288,7 @@ public abstract class AbstractExecutorService implements ExecutorService {
                 Future<T> f = futures.get(i);
                 if (!f.isDone()) {
                     if (nanos <= 0L)
+                        // 如果在这里退出，finally中将会触发cancle(), 将未完成的任务取消
                         return futures;
                     try {
                         f.get(nanos, TimeUnit.NANOSECONDS);

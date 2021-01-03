@@ -149,7 +149,7 @@ class KQueueArrayWrapper {
 
     void setInterest(SelChImpl channel, int events) {
         synchronized (updateList) {
-            // update existing registration
+            // update existing registration // 用于事件的注册
             updateList.add(new Update(channel, events));
         }
     }

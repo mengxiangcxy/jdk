@@ -96,11 +96,11 @@ import java.util.function.Consumer;
  *
  * <p>This class is a member of the
  * <a href="{@docRoot}/../technotes/guides/collections/index.html">
- * Java Collections Framework</a>.
- *
- * @since 1.5
- * @author Doug Lea
- * @param <E> the type of elements held in this collection
+ * Java Collections Framework</a>.   CoucurrentLinkedQueue规定了如下几个不变性:
+ *                                      1.在入队的最后一个元素的next为null
+ * @since 1.5                           2.队列中所有未删除的节点的item都不能为null且都能从head节点遍历到
+ * @author Doug Lea                     3.对于要删除的节点，不是直接将其设置为null，而是先将其item域设置为null（迭代器会跳过item为null的节点）
+ * @param <E> the type of elements held in this collection  4.允许head和tail更新滞后。这是什么意思呢？意思就说是head、tail不总是指向第一个元素和最后一个元素
  */
 public class ConcurrentLinkedQueue<E> extends AbstractQueue<E>
         implements Queue<E>, java.io.Serializable {
@@ -192,7 +192,7 @@ public class ConcurrentLinkedQueue<E> extends AbstractQueue<E>
         boolean casItem(E cmp, E val) {
             return UNSAFE.compareAndSwapObject(this, itemOffset, cmp, val);
         }
-
+        // 调用这个方法和putObject差不多, 只是这个方法设置后对应的值的可见性不一定得到保证,这个方法能起这个作用, 通常是作用在 volatile field上, 也就是说, 下面中的参数 val 是被volatile修饰
         void lazySetNext(Node<E> val) {
             UNSAFE.putOrderedObject(this, nextOffset, val);
         }
@@ -224,14 +224,14 @@ public class ConcurrentLinkedQueue<E> extends AbstractQueue<E>
     /**
      * A node from which the first live (non-deleted) node (if any)
      * can be reached in O(1) time.
-     * Invariants:
-     * - all live nodes are reachable from head via succ()
-     * - head != null
-     * - (tmp = head).next != tmp || tmp != head
+     * Invariants:   不变性
+     * - all live nodes are reachable from head via succ()  所有未删除的节点都可以通过head节点遍历到
+     * - head != null   head不能为null
+     * - (tmp = head).next != tmp || tmp != head  head节点的next不能指向自身
      * Non-invariants:
-     * - head.item may or may not be null.
+     * - head.item may or may not be null.   head的item可能为null，也可能不为null
      * - it is permitted for tail to lag behind head, that is, for tail
-     *   to not be reachable from head!
+     *   to not be reachable from head!   允许tail滞后head，也就是说调用succc()方法，从head不可达tail
      */
     private transient volatile Node<E> head;
 
@@ -240,10 +240,10 @@ public class ConcurrentLinkedQueue<E> extends AbstractQueue<E>
      * node with node.next == null) can be reached in O(1) time.
      * Invariants:
      * - the last node is always reachable from tail via succ()
-     * - tail != null
+     * - tail != null      tail不能为null
      * Non-invariants:
      * - tail.item may or may not be null.
-     * - it is permitted for tail to lag behind head, that is, for tail
+     * - it is permitted for tail to lag behind head, that is, for tail   tail节点的next域可以指向自身
      *   to not be reachable from head!
      * - tail.next may or may not be self-pointing to tail.
      */
@@ -306,7 +306,7 @@ public class ConcurrentLinkedQueue<E> extends AbstractQueue<E>
             h.lazySetNext(h);
     }
 
-    /**
+    /**  successor->继承者
      * Returns the successor of p, or the head node if p.next has been
      * linked to self, which will only be true if traversing with a
      * stale pointer that is now off the list.
@@ -341,15 +341,15 @@ public class ConcurrentLinkedQueue<E> extends AbstractQueue<E>
                 }
                 // Lost CAS race to another thread; re-read next
             }
-            else if (p == q)
+            else if (p == q)  //哨兵节点，即删除节点  触发在poll
                 // We have fallen off list.  If tail is unchanged, it
                 // will also be off-list, in which case we need to
                 // jump to head, from which all live nodes are always
                 // reachable.  Else the new tail is a better bet.
                 p = (t != (t = tail)) ? t : head;
             else
-                // Check for tail updates after two hops.
-                p = (p != t && t != (t = tail)) ? t : q;
+                // Check for tail updates after two hops.   t != (t = tail)  并发时，先缓存了t,后t被其他线程修改
+                p = (p != t && t != (t = tail)) ? t : q; //获取最后一个节点
         }
     }
 
@@ -550,7 +550,7 @@ public class ConcurrentLinkedQueue<E> extends AbstractQueue<E>
                     // for all elements to be added to this queue.
                     if (!casTail(t, last)) {
                         // Try a little harder to update tail,
-                        // since we may be adding many elements.
+                        // since we may be adding many elements. 做一次重试
                         t = tail;
                         if (last.next == null)
                             casTail(t, last);

@@ -19363,11 +19363,11 @@ fi
     fi
 
     # Fail-fast: verify we're building on Xcode 4, we cannot build with Xcode 5 or later
-    XCODE_VERSION=`$XCODEBUILD -version | grep '^Xcode ' | sed 's/Xcode //'`
-    XC_VERSION_PARTS=( ${XCODE_VERSION//./ } )
-    if test ! "${XC_VERSION_PARTS[0]}" = "4"; then
-      as_fn_error $? "Xcode 4 is required to build JDK 8, the version found was $XCODE_VERSION. Use --with-xcode-path to specify the location of Xcode 4 or make Xcode 4 active by using xcode-select." "$LINENO" 5
-    fi
+    # XCODE_VERSION=`$XCODEBUILD -version | grep '^Xcode ' | sed 's/Xcode //'`
+    # XC_VERSION_PARTS=( ${XCODE_VERSION//./ } )
+    # if test ! "${XC_VERSION_PARTS[0]}" = "4"; then
+    #  as_fn_error $? "Xcode 4 is required to build JDK 8, the version found was $XCODE_VERSION. Use --with-xcode-path to specify the location of Xcode 4 or make Xcode 4 active by using xcode-select." "$LINENO" 5
+    # fi
 
     # Some versions of Xcode 5 command line tools install gcc and g++ as symlinks to
     # clang and clang++, which will break the build. So handle that here if we need to.
@@ -20390,13 +20390,13 @@ $as_echo "$as_me: The result from running with -V was: \"$COMPILER_VERSION_TEST\
     COMPILER_VERSION_TEST=`$COMPILER --version 2>&1 | $HEAD -n 1`
     # Check that this is likely to be GCC.
     $COMPILER --version 2>&1 | $GREP "Free Software Foundation" > /dev/null
-    if test $? -ne 0; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: The $COMPILER_NAME compiler (located as $COMPILER) does not seem to be the required GCC compiler." >&5
-$as_echo "$as_me: The $COMPILER_NAME compiler (located as $COMPILER) does not seem to be the required GCC compiler." >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: The result from running with --version was: \"$COMPILER_VERSION_TEST\"" >&5
-$as_echo "$as_me: The result from running with --version was: \"$COMPILER_VERSION_TEST\"" >&6;}
-      as_fn_error $? "GCC compiler is required. Try setting --with-tools-dir." "$LINENO" 5
-    fi
+    # if test $? -ne 0; then
+    #  { $as_echo "$as_me:${as_lineno-$LINENO}: The $COMPILER_NAME compiler (located as $COMPILER) does not seem to be the required GCC compiler." >&5
+# $as_echo "$as_me: The $COMPILER_NAME compiler (located as $COMPILER) does not seem to be the required GCC compiler." >&6;}
+#      { $as_echo "$as_me:${as_lineno-$LINENO}: The result from running with --version was: \"$COMPILER_VERSION_TEST\"" >&5
+# $as_echo "$as_me: The result from running with --version was: \"$COMPILER_VERSION_TEST\"" >&6;}
+#      as_fn_error $? "GCC compiler is required. Try setting --with-tools-dir." "$LINENO" 5
+#    fi
 
     # First line typically looks something like:
     # gcc (Ubuntu/Linaro 4.5.2-8ubuntu4) 4.5.2
@@ -21992,13 +21992,13 @@ $as_echo "$as_me: The result from running with -V was: \"$COMPILER_VERSION_TEST\
     COMPILER_VERSION_TEST=`$COMPILER --version 2>&1 | $HEAD -n 1`
     # Check that this is likely to be GCC.
     $COMPILER --version 2>&1 | $GREP "Free Software Foundation" > /dev/null
-    if test $? -ne 0; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: The $COMPILER_NAME compiler (located as $COMPILER) does not seem to be the required GCC compiler." >&5
-$as_echo "$as_me: The $COMPILER_NAME compiler (located as $COMPILER) does not seem to be the required GCC compiler." >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: The result from running with --version was: \"$COMPILER_VERSION_TEST\"" >&5
-$as_echo "$as_me: The result from running with --version was: \"$COMPILER_VERSION_TEST\"" >&6;}
-      as_fn_error $? "GCC compiler is required. Try setting --with-tools-dir." "$LINENO" 5
-    fi
+    #if test $? -ne 0; then
+    #  { $as_echo "$as_me:${as_lineno-$LINENO}: The $COMPILER_NAME compiler (located as $COMPILER) does not seem to be the required GCC compiler." >&5
+#$as_echo "$as_me: The $COMPILER_NAME compiler (located as $COMPILER) does not seem to be the required GCC compiler." >&6;}
+#      { $as_echo "$as_me:${as_lineno-$LINENO}: The result from running with --version was: \"$COMPILER_VERSION_TEST\"" >&5
+#$as_echo "$as_me: The result from running with --version was: \"$COMPILER_VERSION_TEST\"" >&6;}
+#      as_fn_error $? "GCC compiler is required. Try setting --with-tools-dir." "$LINENO" 5
+#    fi
 
     # First line typically looks something like:
     # gcc (Ubuntu/Linaro 4.5.2-8ubuntu4) 4.5.2

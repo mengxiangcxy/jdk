@@ -331,7 +331,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      * collisions in bins, we just XOR some shifted bits in the
      * cheapest possible way to reduce systematic lossage, as well as
      * to incorporate impact of the highest bits that would otherwise
-     * never be used in index calculations because of table bounds.
+     * never be used in index calculations because of table bounds.   x % 2^n = x & (2^n - 1)
      */
     static final int hash(Object key) {
         int h;
@@ -372,7 +372,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
     }
 
     /**
-     * Returns a power of two size for the given target capacity.
+     * Returns a power of two size for the given target capacity.  2^n
      */
     static final int tableSizeFor(int cap) {
         int n = cap - 1;
@@ -561,7 +561,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
      *
      * @param hash hash for key
      * @param key the key
-     * @return the node, or null if none
+     * @return the node, or null if none  (n - 1) & hash ->查找桶的索引   对取模运算的优化
      */
     final Node<K,V> getNode(int hash, Object key) {
         Node<K,V>[] tab; Node<K,V> first, e; int n; K k;
@@ -627,7 +627,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
         if ((tab = table) == null || (n = tab.length) == 0)
             n = (tab = resize()).length;
         if ((p = tab[i = (n - 1) & hash]) == null)
-            tab[i] = newNode(hash, key, value, null);
+            tab[i] = newNode(hash, key, value, null);  // 开新桶
         else {
             Node<K,V> e; K k;
             if (p.hash == hash &&
@@ -702,12 +702,12 @@ public class HashMap<K,V> extends AbstractMap<K,V>
         @SuppressWarnings({"rawtypes","unchecked"})
             Node<K,V>[] newTab = (Node<K,V>[])new Node[newCap];
         table = newTab;
-        if (oldTab != null) {
+        if (oldTab != null) {   // 迁移新table
             for (int j = 0; j < oldCap; ++j) {
                 Node<K,V> e;
                 if ((e = oldTab[j]) != null) {
                     oldTab[j] = null;
-                    if (e.next == null)
+                    if (e.next == null)  // 链表结束
                         newTab[e.hash & (newCap - 1)] = e;
                     else if (e instanceof TreeNode)
                         ((TreeNode<K,V>)e).split(this, newTab, j, oldCap);
@@ -717,7 +717,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
                         Node<K,V> next;
                         do {
                             next = e.next;
-                            if ((e.hash & oldCap) == 0) {
+                            if ((e.hash & oldCap) == 0) {  //新老只相差了高一位，位运算后也只相差那一位，为0或1
                                 if (loTail == null)
                                     loHead = e;
                                 else
@@ -756,7 +756,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
         if (tab == null || (n = tab.length) < MIN_TREEIFY_CAPACITY)
             resize();
         else if ((e = tab[index = (n - 1) & hash]) != null) {
-            TreeNode<K,V> hd = null, tl = null;
+            TreeNode<K,V> hd = null, tl = null;  // tree 维护的链表，A.next->B  B.prev->A
             do {
                 TreeNode<K,V> p = replacementTreeNode(e, null);
                 if (tl == null)
@@ -1818,7 +1818,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
         }
 
         /**
-         * Ensures that the given root is the first node of its bin.
+         * Ensures that the given root is the first node of its bin.  维持树根结点为链表的头节点
          */
         static <K,V> void moveRootToFront(Node<K,V>[] tab, TreeNode<K,V> root) {
             int n;
@@ -1845,7 +1845,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
         /**
          * Finds the node starting at root p with the given hash and key.
          * The kc argument caches comparableClassFor(key) upon first use
-         * comparing keys.
+         * comparing keys.   左节点<根节点<右节点
          */
         final TreeNode<K,V> find(int h, Object k, Class<?> kc) {
             TreeNode<K,V> p = this;
@@ -1866,7 +1866,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
                           (kc = comparableClassFor(k)) != null) &&
                          (dir = compareComparables(kc, k, pk)) != 0)
                     p = (dir < 0) ? pl : pr;
-                else if ((q = pr.find(h, k, kc)) != null)
+                else if ((q = pr.find(h, k, kc)) != null)  // 默认右找不到则走else继续向左查
                     return q;
                 else
                     p = pl;
@@ -1907,7 +1907,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
             for (TreeNode<K,V> x = this, next; x != null; x = next) {
                 next = (TreeNode<K,V>)x.next;
                 x.left = x.right = null;
-                if (root == null) {
+                if (root == null) {   // 头节点为红黑树跟节点
                     x.parent = null;
                     x.red = false;
                     root = x;
@@ -1927,7 +1927,7 @@ public class HashMap<K,V> extends AbstractMap<K,V>
                                   (kc = comparableClassFor(k)) == null) ||
                                  (dir = compareComparables(kc, k, pk)) == 0)
                             dir = tieBreakOrder(k, pk);
-
+                        // 与跟节点比较hash或key，得出分布在节点的左或右
                         TreeNode<K,V> xp = p;
                         if ((p = (dir <= 0) ? p.left : p.right) == null) {
                             x.parent = xp;

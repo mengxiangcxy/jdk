@@ -212,7 +212,7 @@ public class CyclicBarrier {
             }
 
             int index = --count;
-            if (index == 0) {  // tripped
+            if (index == 0) {  // tripped 最后一个到达的执行预定义的任务(如果存在)
                 boolean ranAction = false;
                 try {
                     final Runnable command = barrierCommand;
@@ -231,7 +231,7 @@ public class CyclicBarrier {
             for (;;) {
                 try {
                     if (!timed)
-                        trip.await();
+                        trip.await(); //加入等待队列
                     else if (nanos > 0L)
                         nanos = trip.awaitNanos(nanos);
                 } catch (InterruptedException ie) {

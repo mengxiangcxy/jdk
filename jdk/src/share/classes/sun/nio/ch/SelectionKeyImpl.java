@@ -102,6 +102,7 @@ public class SelectionKeyImpl
     public SelectionKey nioInterestOps(int ops) {
         if ((ops & ~channel().validOps()) != 0)
             throw new IllegalArgumentException();
+        // 转换感兴趣事件为操作系统可识别的，并储存在list中，等后续进行事件的注册
         channel.translateAndSetInterestOps(ops, this);
         interestOps = ops;
         return this;
